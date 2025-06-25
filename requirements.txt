@@ -1,3 +1,8 @@
-streamlit>=1.35
-pandas>=2.2
-altair>=5.3
+# Core app dependencies
+streamlit==1.46.0     # UI framework – released 2025-06-18 :contentReference[oaicite:0]{index=0}
+pandas==2.3.0         # Data manipulation – released 2025-06-05 :contentReference[oaicite:1]{index=1}
+altair==5.5.0         # Charting library – released 2024-11-23 :contentReference[oaicite:2]{index=2}
+yfinance==0.2.63      # Yahoo! Finance API wrapper – released 2025-06-12 :contentReference[oaicite:3]{index=3}
+
+# (Optional) pins for faster cold-start and reproducibility
+numpy>=1.26           # pandas runtime dependency
