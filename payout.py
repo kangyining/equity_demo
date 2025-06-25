@@ -12,7 +12,9 @@ ticker = yf.Ticker("HAPBF")
 price = ticker.fast_info["last_price"]      # float
 print("fast_info price:", price)
 
-
+MARKET_CAP_USD = 20.49 * 1_000_000   # 16.86 million USD
+SHARES_OUT     = MARKET_CAP_USD//price         # ≈ shares derived earlier (const)
+stock_price = price
 def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue: float,
              valuation_multiple: float, vesting_dict: dict[int, float],retain_rate: float = 0.90,) -> pd.DataFrame:
     """Return a DataFrame with revenue, value-add, and vested equity for each year."""
@@ -45,6 +47,10 @@ def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue:
     df["value_added"] = df["arr"] * valuation_multiple + df["one_time_rev"]
     df["vested_pct"] = df.index.to_series().map(vesting_dict).fillna(0)
     df["equity_value"] = df["value_added"] * df["vested_pct"]
+        # --- NEW: translate value-added into market-cap & share-price -----------
+    df["cum_val_added"] = df["value_added"].cumsum()
+    df["market_cap_usd"]   = MARKET_CAP_USD + df["cum_val_added"]
+    df["share_price_usd"]  = df["market_cap_usd"] / SHARES_OUT
     print(df)
     return df
 
@@ -75,15 +81,15 @@ with st.sidebar:
     st.markdown("#### Current HAPBF price (Yahoo Finance)")
     st.metric("Last trade", f"${price:.4f}")      # shows, e.g., $0.0811
 
-    st.markdown("### Company stock price ($)")
+    # st.markdown("### Company stock price ($)")
 
-    stock_price = float(
-        st.text_input(
-            label="",                       # no label to keep it compact
-            value=f"{price:.4f}",                   # default value as a string
-            key="stock_price_text",
-        )
-    )                            # docs: st.text_input :contentReference[oaicite:3]{index=3}
+    # stock_price = float(
+    #     st.text_input(
+    #         label="",                       # no label to keep it compact
+    #         value=f"{price:.4f}",                   # default value as a string
+    #         key="stock_price_text",
+    #     )
+    # )                            # docs: st.text_input :contentReference[oaicite:3]{index=3}
 
     # ── Valuation multiple ──────────────────────────────────────────────── #
     st.markdown("### Valuation multiple (× ARR)")
@@ -182,20 +188,45 @@ acq_aggr = parse_pairs(aggr_txt)
 
 # Run simulations
 results = {
-    "Conservative": simulate(acq_cons, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
-    "Base": simulate(acq_base, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
-    "Aggressive": simulate(acq_aggr, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
+    "Conservative": simulate(acq_cons, price_monthly, device_revenue,
+                             valuation_multiple, vesting, retain_rate,
+                             ),
+    "Base":         simulate(acq_base, price_monthly, device_revenue,
+                             valuation_multiple, vesting, retain_rate,
+                             ),
+    "Aggressive":   simulate(acq_aggr, price_monthly, device_revenue,
+                             valuation_multiple, vesting, retain_rate,
+                             )
 }
-
+proj_price_long = (
+    pd.concat({name: df["share_price_usd"]
+               for name, df in results.items()}, axis=1)      # stack side-by-side
+      .reset_index()                                          # make Year a column
+      .melt(id_vars="Year", var_name="Scenario",
+            value_name="share_price_usd")                     # long form
+)
 # ---------------------------- Display ----------------------------------------- #
 
 # 1️⃣  Combined EQUITY line chart with labels
-combined_equity = pd.concat({k: v["equity_value"] for k, v in results.items()}, axis=1).reset_index().melt(id_vars="Year", var_name="Scenario", value_name="Equity")
-# --- shares = equity / stock_price -------------------------------------- #
-combined_equity["Shares"] = combined_equity["Equity"] / stock_price           # numeric
-combined_equity["SharesLabel"] = combined_equity["Shares"].apply(             # "[123,456]"
+# combined_equity = pd.concat({k: v["equity_value"] for k, v in results.items()}, axis=1).reset_index().melt(id_vars="Year", var_name="Scenario", value_name="Equity")
+combined_equity = (
+    pd.concat({k: v["equity_value"] for k, v in results.items()}, axis=1)
+      .reset_index()
+      .melt(id_vars="Year", var_name="Scenario", value_name="Equity")
+      .merge(proj_price_long, on=["Year", "Scenario"])            # ← NEW merge
+)
+combined_equity["Shares"] = (
+    combined_equity["Equity"] / combined_equity["share_price_usd"]
+)
+combined_equity["SharesLabel"] = combined_equity["Shares"].apply(
     lambda s: f"[{s:,.0f}]"
 )
+
+# # --- shares = equity / stock_price -------------------------------------- #
+# combined_equity["Shares"] = combined_equity["Equity"] / stock_price           # numeric
+# combined_equity["SharesLabel"] = combined_equity["Shares"].apply(             # "[123,456]"
+#     lambda s: f"[{s:,.0f}]"
+# )
 line_equity = alt.Chart(combined_equity).mark_line(point=True).encode(
     x=alt.X("Year:O", axis=alt.Axis(title="Year", tickMinStep=1,labelAngle=0)),
     y=alt.Y("Equity:Q", axis=alt.Axis(title="Equity Value ($)", format="$,.0f")),
@@ -255,3 +286,13 @@ fmt = {
 for name in ["Conservative", "Base", "Aggressive"]:
     st.subheader(f"🧮 {name} scenario – yearly results")
     st.dataframe(results[name].style.format(fmt))
+
+
+proj_price_df = pd.concat(
+    {name: df["share_price_usd"] for name, df in results.items()},
+    axis=1
+).reset_index().rename_axis(None, axis=1)
+st.subheader("💵 Projected Share Price (USD)")
+st.dataframe(proj_price_df.style.format({"Conservative":"${:,.3f}",
+                                   "Base":"${:,.3f}",
+                                   "Aggressive":"${:,.3f}"}))
