@@ -100,11 +100,31 @@ with st.sidebar:
         )
 
     valuation_multiple = float(st.session_state.val_mult_slider)
+
     st.markdown("### Annual retention rate (%)")
-    retain_rate = st.slider(
-        label=" ", min_value=0.0, max_value=1.0, value=0.90, step=0.01,
-        help="Fraction of last year’s users that stay active"
-    )
+
+    col_rr_slider, col_rr_text = st.columns([3, 1])          # wider slider, narrow box
+
+    with col_rr_slider:
+        st.slider(
+            " ", 0.0, 1.0, 0.90, 0.01,                       # min, max, default, step
+            key="retention_slider",
+            on_change=lambda: st.session_state.update(
+                retention_text=st.session_state.retention_slider
+            ),
+        )
+
+    with col_rr_text:
+        st.text_input(
+            label="",
+            key="retention_text",
+            value=str(st.session_state.get("retention_slider", 0.90)),
+            on_change=lambda: st.session_state.update(
+                retention_slider=float(st.session_state.retention_text or 0)
+            ),
+        )
+
+    retain_rate = float(st.session_state.retention_slider)    # unified numeric value
     # ── Vesting schedule (% vested each year) ──────────────────────────── #
     st.subheader("Vesting schedule (% vested each year)")
     
