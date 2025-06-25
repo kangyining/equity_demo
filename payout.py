@@ -37,7 +37,7 @@ def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue:
 
 # ---------------------------- UI layout --------------------------------------- #
 
-st.set_page_config(page_title="Equity Simulation Dashboard", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Equity Simulation Dashboard", page_icon="📈", layout="wide",initial_sidebar_state="expanded"   # <— keep sidebar open by default)
 st.title("📈 Equity Simulation Dashboard")
 st.write("Adjust inputs and compare conservative, base, and aggressive growth scenarios.")
 
