@@ -39,8 +39,8 @@ st.write("Adjust inputs and compare conservative, base, and aggressive growth sc
 # Sidebar – global parameters
 with st.sidebar:
     st.header("Global Parameters")
-    price_monthly = st.number_input("Subscription price ($/month)", min_value=0.0, value=20.0, step=1.0)
-    device_revenue = st.number_input("Device revenue (one-time $)", min_value=0.0, value=100.0, step=10.0)
+    price_monthly = st.number_input("Subscription price ($/month)", min_value=0.0, value=12.5, step=0.5)
+    device_revenue = st.number_input("Device revenue (one-time $)", min_value=0.0, value=225.0, step=5.0)
     valuation_multiple = st.slider("Valuation multiple (× ARR)", 1.0, 15.0, value=8.0)
 
     # Vesting schedule
