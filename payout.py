@@ -26,7 +26,13 @@ def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue:
 
 # ---------------------------- UI layout --------------------------------------- #
 
-st.set_page_config(page_title="Equity Simulation Dashboard", page_icon="📈", layout="wide")
+st.set_page_config(
+    page_title="Equity Simulation Dashboard",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"  # 👉 keeps sidebar open by default
+)
+
 st.title("📈 Equity Simulation Dashboard")
 st.write("Adjust inputs and compare conservative, base, and aggressive growth scenarios.")
 
@@ -34,7 +40,7 @@ st.write("Adjust inputs and compare conservative, base, and aggressive growth sc
 with st.sidebar:
     st.header("Global Parameters")
     price_monthly = st.number_input("Subscription price ($/month)", min_value=0.0, value=20.0, step=1.0)
-    device_revenue = st.number_input("Device revenue (one-time $)", min_value=0.0, value=150.0, step=10.0)
+    device_revenue = st.number_input("Device revenue (one-time $)", min_value=0.0, value=100.0, step=10.0)
     valuation_multiple = st.slider("Valuation multiple (× ARR)", 1.0, 15.0, value=8.0)
 
     # Vesting schedule
@@ -45,8 +51,8 @@ with st.sidebar:
     vesting = {1: v1, 2: v2, 3: v3}
 
     # Scenario inputs
-    st.header("New‑user acquisitions per scenario")
-    st.caption("Enter comma‑separated year:user pairs (e.g. 1:1200,2:3000)")
+    st.header("New-user acquisitions per scenario")
+    st.caption("Enter comma-separated year:user pairs (e.g. 1:1200,2:3000)")
     base_txt = st.text_area("Base", "1:1200,2:3000,3:5000")
     cons_txt = st.text_area("Conservative", "1:800,2:2000,3:3500")
     aggr_txt = st.text_area("Aggressive", "1:1600,2:4500,3:8000")
@@ -91,7 +97,7 @@ labels_equity = line_equity.mark_text(dy=-15, fontWeight="bold").encode(
 st.header("📈 Equity Value Comparison Across Scenarios")
 st.altair_chart((line_equity + labels_equity).properties(width=800, height=350), use_container_width=True)
 
-# 2️⃣ Combined VALUE‑ADDED line chart with labels
+# 2️⃣ Combined VALUE-ADDED line chart with labels
 combined_va = pd.concat({k: v["value_added"] for k, v in results.items()}, axis=1).reset_index().melt(id_vars="Year", var_name="Scenario", value_name="ValueAdded")
 
 line_va = alt.Chart(combined_va).mark_line(point=True).encode(
