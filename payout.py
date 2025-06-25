@@ -14,7 +14,7 @@ print("fast_info price:", price)
 
 
 def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue: float,
-             valuation_multiple: float, vesting_dict: dict[int, float]) -> pd.DataFrame:
+             valuation_multiple: float, vesting_dict: dict[int, float],retain_rate: float = 0.90,) -> pd.DataFrame:
     """Return a DataFrame with revenue, value-add, and vested equity for each year."""
     df = (
         pd.DataFrame({
@@ -26,7 +26,20 @@ def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue:
     )
 
     df["one_time_rev"] = df["new_users"] * device_revenue
-    df["cum_users"] = df["new_users"].cumsum()
+        # --- NEW: cumulative active users with 90 % retention ---------------- #
+    # RETAIN = 0.90                     # 90 % of last year’s users stay active
+    active = 0                        # running total of still-paying users
+    cum_list = []                     # to collect year-by-year results
+
+    for y in df.index:                # iterate in chronological order
+        active = df.at[y, "new_users"] + active * retain_rate
+        print('active:',active)
+        cum_list.append(active)
+    print(cum_list)
+
+    df["cum_users"] = cum_list        # replaces simple .cumsum()
+    # -------------------------------------------------------------------- #
+
     df["arr"] = df["cum_users"] * price_monthly * 12
     # df["arr"] = df["new_users"] * price_monthly * 12
     df["value_added"] = df["arr"] * valuation_multiple + df["one_time_rev"]
@@ -87,10 +100,14 @@ with st.sidebar:
         )
 
     valuation_multiple = float(st.session_state.val_mult_slider)
-
+    st.markdown("### Annual retention rate (%)")
+    retain_rate = st.slider(
+        label=" ", min_value=0.0, max_value=1.0, value=0.90, step=0.01,
+        help="Fraction of last year’s users that stay active"
+    )
     # ── Vesting schedule (% vested each year) ──────────────────────────── #
     st.subheader("Vesting schedule (% vested each year)")
-
+    
     vesting = {}
     default_perc = {1: 50, 2: 25, 3: 15}
 
@@ -138,9 +155,9 @@ acq_aggr = parse_pairs(aggr_txt)
 
 # Run simulations
 results = {
-    "Conservative": simulate(acq_cons, price_monthly, device_revenue, valuation_multiple, vesting),
-    "Base": simulate(acq_base, price_monthly, device_revenue, valuation_multiple, vesting),
-    "Aggressive": simulate(acq_aggr, price_monthly, device_revenue, valuation_multiple, vesting),
+    "Conservative": simulate(acq_cons, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
+    "Base": simulate(acq_base, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
+    "Aggressive": simulate(acq_aggr, price_monthly, device_revenue, valuation_multiple, vesting, retain_rate),
 }
 
 # ---------------------------- Display ----------------------------------------- #
