@@ -52,6 +52,13 @@ def simulate(acquisitions: dict[int, int], price_monthly: float, device_revenue:
 
 st.set_page_config(page_title="Equity Simulation Dashboard", page_icon="📈", layout="wide",initial_sidebar_state="expanded")   # <— keep sidebar open by default)
 st.title("📈 Equity Simulation Dashboard")
+# NEW ───────────────────────────────────────────────────────────────────────── #
+show_shares = st.toggle(
+    "Show share count labels",             # label
+    value=True,                            # default ON
+    key="show_shares_toggle",
+)  # Readers can flip this before or after adjusting parameters
+# ───────────────────────────────────────────────────────────────────────────── #
 st.write("Adjust inputs and compare conservative, base, and aggressive growth scenarios.")
 
 # Sidebar – global parameters
@@ -190,7 +197,7 @@ combined_equity["SharesLabel"] = combined_equity["Shares"].apply(             # 
     lambda s: f"[{s:,.0f}]"
 )
 line_equity = alt.Chart(combined_equity).mark_line(point=True).encode(
-    x=alt.X("Year:O", axis=alt.Axis(title="Year", tickMinStep=1)),
+    x=alt.X("Year:O", axis=alt.Axis(title="Year", tickMinStep=1,labelAngle=0)),
     y=alt.Y("Equity:Q", axis=alt.Axis(title="Equity Value ($)", format="$,.0f")),
     color="Scenario:N",
     tooltip=["Scenario", "Year", alt.Tooltip("Equity", format="$,.0f")],
@@ -208,17 +215,23 @@ shares_labels = (
         text="SharesLabel:N",
     )
 )
+
+base_layers = line_equity + labels_equity          # always visible
+if show_shares:                                    # add only if switch ON
+    equity_chart = base_layers + shares_labels
+else:
+    equity_chart = base_layers
+
 st.header("📈 Equity Value Comparison Across Scenarios")
 st.altair_chart(
-    (line_equity + labels_equity + shares_labels)                              # ⬅️ added layer
-      .properties(width=800, height=350),
+    equity_chart.properties(width=800, height=350),
     use_container_width=True,
 )
 # 2️⃣ Combined VALUE‑ADDED line chart with labels
 combined_va = pd.concat({k: v["value_added"] for k, v in results.items()}, axis=1).reset_index().melt(id_vars="Year", var_name="Scenario", value_name="ValueAdded")
 
 line_va = alt.Chart(combined_va).mark_line(point=True).encode(
-    x=alt.X("Year:O", axis=alt.Axis(title="Year", tickMinStep=1)),
+    x=alt.X("Year:O", axis=alt.Axis(title="Year", tickMinStep=1,labelAngle=0)),
     y=alt.Y("ValueAdded:Q", axis=alt.Axis(title="Valuation Added ($)", format="$,.0f")),
     color="Scenario:N",
     tooltip=["Scenario", "Year", alt.Tooltip("ValueAdded", format="$,.0f")],
